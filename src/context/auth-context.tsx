@@ -1,23 +1,19 @@
-import { auth, db } from "@/config/firebase";
-import { User } from "@/types/user";
+import { auth } from "@/config/firebase";
+import { User as FirebaseUser, onAuthStateChanged } from "firebase/auth";
 import {
-  createUserWithEmailAndPassword,
-  User as FirebaseUser,
-  GoogleAuthProvider,
-  onAuthStateChanged,
-  signInWithEmailAndPassword,
-  signInWithPopup,
-  signOut,
-} from "firebase/auth";
-import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
+  register as firebaseRegister,
+  login as firebaseLogin,
+  loginWithGoogle as firebaseLoginWithGoogle,
+  logout as firebaseLogout,
+} from "@/services/auth-service";
 import React, { createContext, useContext, useEffect, useState } from "react";
 
 interface AuthContextType {
   currentUser: FirebaseUser | null;
   loading: boolean;
-  register: (email: string, password: string) => Promise<FirebaseUser>;
-  login: (email: string, password: string) => Promise<FirebaseUser>;
-  loginWithGoogle: () => Promise<FirebaseUser>;
+  register: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
+  loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -35,92 +31,24 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Store user data in Firestore
-  const createUserDocument = async (user: FirebaseUser) => {
-    if (!user) return;
-
-    const userRef = doc(db, "users", user.uid);
-    const userSnap = await getDoc(userRef);
-
-    if (!userSnap.exists()) {
-      const userData: Omit<User, "uid"> = {
-        email: user.email || "",
-        displayName: user.displayName,
-        photoURL: user.photoURL,
-        createdAt: new Date(),
-        lastLoginAt: new Date(),
-      };
-
-      await setDoc(userRef, {
-        ...userData,
-        createdAt: serverTimestamp(),
-        lastLoginAt: serverTimestamp(),
-      });
-    } else {
-      // Update last login
-      await setDoc(
-        userRef,
-        {
-          lastLoginAt: serverTimestamp(),
-        },
-        { merge: true }
-      );
-    }
-  };
-
   // Register with email/password
   const register = async (email: string, password: string) => {
-    try {
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        email,
-        password
-      );
-      await createUserDocument(userCredential.user);
-      return userCredential.user;
-    } catch (error) {
-      console.error("Error registering user:", error);
-      throw error;
-    }
+    await firebaseRegister(email, password);
   };
 
   // Login with email/password
   const login = async (email: string, password: string) => {
-    try {
-      const userCredential = await signInWithEmailAndPassword(
-        auth,
-        email,
-        password
-      );
-      await createUserDocument(userCredential.user);
-      return userCredential.user;
-    } catch (error) {
-      console.error("Error logging in:", error);
-      throw error;
-    }
+    await firebaseLogin(email, password);
   };
 
   // Login with Google
   const loginWithGoogle = async () => {
-    try {
-      const provider = new GoogleAuthProvider();
-      const userCredential = await signInWithPopup(auth, provider);
-      await createUserDocument(userCredential.user);
-      return userCredential.user;
-    } catch (error) {
-      console.error("Error logging in with Google:", error);
-      throw error;
-    }
+    await firebaseLoginWithGoogle();
   };
 
   // Logout
   const logout = async () => {
-    try {
-      await signOut(auth);
-    } catch (error) {
-      console.error("Error logging out:", error);
-      throw error;
-    }
+    await firebaseLogout();
   };
 
   useEffect(() => {
