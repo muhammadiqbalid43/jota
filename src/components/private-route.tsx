@@ -1,12 +1,7 @@
 import { useAuth } from "@/context/auth-context";
-import React from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, Outlet } from "react-router-dom";
 
-interface PrivateRouteProps {
-  children: React.ReactNode;
-}
-
-const PrivateRoute = ({ children }: PrivateRouteProps) => {
+const PrivateRoute = () => {
   const { currentUser, loading } = useAuth();
 
   if (loading) {
@@ -17,7 +12,11 @@ const PrivateRoute = ({ children }: PrivateRouteProps) => {
     return <Navigate to="/login" />;
   }
 
-  return <div>{children}</div>;
+  return (
+    <div>
+      <Outlet />
+    </div>
+  );
 };
 
 export default PrivateRoute;
