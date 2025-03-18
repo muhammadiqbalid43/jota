@@ -11,14 +11,13 @@ import {
 } from "firebase/auth";
 import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 
 interface AuthContextType {
   currentUser: FirebaseUser | null;
   loading: boolean;
-  register: (email: string, password: string) => Promise<void>;
-  login: (email: string, password: string) => Promise<void>;
-  loginWithGoogle: () => Promise<void>;
+  register: (email: string, password: string) => Promise<FirebaseUser>;
+  login: (email: string, password: string) => Promise<FirebaseUser>;
+  loginWithGoogle: () => Promise<FirebaseUser>;
   logout: () => Promise<void>;
 }
 
@@ -35,7 +34,6 @@ export const useAuth = () => {
 const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
 
   // Store user data in Firestore
   const createUserDocument = async (user: FirebaseUser) => {
@@ -79,7 +77,7 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         password
       );
       await createUserDocument(userCredential.user);
-      navigate("/dashboard");
+      return userCredential.user;
     } catch (error) {
       console.error("Error registering user:", error);
       throw error;
@@ -95,7 +93,7 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         password
       );
       await createUserDocument(userCredential.user);
-      navigate("/dashboard");
+      return userCredential.user;
     } catch (error) {
       console.error("Error logging in:", error);
       throw error;
@@ -108,7 +106,7 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const provider = new GoogleAuthProvider();
       const userCredential = await signInWithPopup(auth, provider);
       await createUserDocument(userCredential.user);
-      navigate("/dashboard");
+      return userCredential.user;
     } catch (error) {
       console.error("Error logging in with Google:", error);
       throw error;
@@ -119,7 +117,6 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const logout = async () => {
     try {
       await signOut(auth);
-      navigate("/login");
     } catch (error) {
       console.error("Error logging out:", error);
       throw error;
